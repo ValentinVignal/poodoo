@@ -168,6 +168,46 @@ class MarkdownTextEditingController extends TextEditingController {
     return spans;
   }
 
+  // Build spans with nested styling by finding child positions in parent's rawText
+  List<InlineSpan> _buildNestedSpans(
+    BuildContext context,
+    TextStyle base,
+    String rawText,
+    List<md.AstNode> children,
+  ) {
+    if (children.isEmpty) {
+      return [TextSpan(text: rawText, style: base)];
+    }
+
+    final spans = <InlineSpan>[];
+    var lastEnd = 0;
+
+    for (final child in children) {
+      // Find where this child's rawText appears in the parent's rawText
+      final childStart = rawText.indexOf(child.rawText, lastEnd);
+      if (childStart == -1) continue;
+
+      // Add any text before this child
+      if (childStart > lastEnd) {
+        spans.add(
+          TextSpan(text: rawText.substring(lastEnd, childStart), style: base),
+        );
+      }
+
+      // Add the child with its styling
+      spans.addAll(_visitNode(context, base, child));
+
+      lastEnd = childStart + child.rawText.length;
+    }
+
+    // Add any remaining text after the last child
+    if (lastEnd < rawText.length) {
+      spans.add(TextSpan(text: rawText.substring(lastEnd), style: base));
+    }
+
+    return spans;
+  }
+
   // Visitor that returns a list of spans for the given node.
   List<InlineSpan> _visitNode(
     BuildContext context,
@@ -175,28 +215,33 @@ class MarkdownTextEditingController extends TextEditingController {
     md.AstNode node,
   ) {
     switch (node) {
-      // Headings: show all rawText, just style
+      // Headings: show rawText with heading style and nested children
       case md.HeadingNode():
         final heading = node;
         final level = heading.level;
-        final style = _headingStyle(context, level);
-        return [TextSpan(text: node.rawText, style: style)];
+        final style = _headingStyle(context, level) ?? base;
+        return _buildNestedSpans(
+          context,
+          style,
+          node.rawText,
+          heading.children,
+        );
 
-      // Paragraphs: show all rawText
-      case md.ParagraphNode():
-        return [TextSpan(text: node.rawText, style: base)];
+      // Paragraphs: show rawText with nested children
+      case md.ParagraphNode(:final children):
+        return _buildNestedSpans(context, base, node.rawText, children);
 
-      // Unordered list: show all rawText
-      case md.UnorderedListNode():
-        return [TextSpan(text: node.rawText, style: base)];
+      // Unordered list: show rawText with nested items
+      case md.UnorderedListNode(:final items):
+        return _buildNestedSpans(context, base, node.rawText, items);
 
-      // Ordered list: show all rawText
-      case md.OrderedListNode():
-        return [TextSpan(text: node.rawText, style: base)];
+      // Ordered list: show rawText with nested items
+      case md.OrderedListNode(:final items):
+        return _buildNestedSpans(context, base, node.rawText, items);
 
-      // List item: show all rawText
-      case md.ListItemNode():
-        return [TextSpan(text: node.rawText, style: base)];
+      // List item: show rawText with nested children
+      case md.ListItemNode(:final children):
+        return _buildNestedSpans(context, base, node.rawText, children);
 
       // Code block
       case md.CodeBlockNode(:final text):
@@ -205,28 +250,28 @@ class MarkdownTextEditingController extends TextEditingController {
       case md.BlankLineNode():
         return [TextSpan(text: '\n', style: base)];
 
-      // Blockquote: show all rawText
-      case md.BlockquoteNode():
+      // Blockquote: show rawText with nested children
+      case md.BlockquoteNode(:final children):
         final qStyle = _blockquoteStyle(context, base);
-        return [TextSpan(text: node.rawText, style: qStyle)];
+        return _buildNestedSpans(context, qStyle, node.rawText, children);
 
-      // Inline styles: show all rawText, just style
-      case md.BoldNode():
+      // Inline styles: show rawText with style and nested children
+      case md.BoldNode(:final children):
         final boldStyle = _bold(base);
-        return [TextSpan(text: node.rawText, style: boldStyle)];
-      case md.ItalicNode():
+        return _buildNestedSpans(context, boldStyle, node.rawText, children);
+      case md.ItalicNode(:final children):
         final italicStyle = _italic(base);
-        return [TextSpan(text: node.rawText, style: italicStyle)];
-      case md.StrikethroughNode():
+        return _buildNestedSpans(context, italicStyle, node.rawText, children);
+      case md.StrikethroughNode(:final children):
         final strikeStyle = _strike(base);
-        return [TextSpan(text: node.rawText, style: strikeStyle)];
+        return _buildNestedSpans(context, strikeStyle, node.rawText, children);
       case md.InlineCodeNode():
         return [
           TextSpan(text: node.rawText, style: _inlineCode(context, base)),
         ];
-      case md.LinkNode():
+      case md.LinkNode(:final children):
         final linkStyle = _linkStyle(context, base);
-        return [TextSpan(text: node.rawText, style: linkStyle)];
+        return _buildNestedSpans(context, linkStyle, node.rawText, children);
 
       // Plain text
       case md.TextNode():
