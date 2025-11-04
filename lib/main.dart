@@ -36,7 +36,40 @@ class _MarkdownTextFieldState extends State<MarkdownTextField> {
   }
 }
 
+const _exampleMarkdown = '''
+# Heading 1
+Here is some **bold text**, some *italic text*, and some ~~strikethrough~~.
+
+## Heading 2
+Inline code: `print("Hello, World!")`
+```
+// Block code:
+void main() {
+  print("Hello, World!");
+}
+```
+
+> This is a blockquote.
+
+- Unordered list item 1
+- Unordered list item 2
+
+1. Ordered list item 1
+2. Ordered list item 2
+
+- [x] Checked item
+- [ ] Unchecked item
+
+Plain text paragraph to demonstrate styling.
+
+Here is a [link](https://example.com).
+
+
+''';
+
 class MarkdownTextEditingController extends TextEditingController {
+  MarkdownTextEditingController({String? text})
+    : super(text: text ?? _exampleMarkdown);
   TextStyle _baseStyle(BuildContext context, TextStyle? style) {
     // Fallback to DefaultTextStyle if incoming style is null.
     return style ?? DefaultTextStyle.of(context).style;
