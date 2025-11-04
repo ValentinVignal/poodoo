@@ -37,32 +37,46 @@ class _MarkdownTextFieldState extends State<MarkdownTextField> {
 }
 
 const _exampleMarkdown = '''
-# Heading 1
+# Heading 1 with **bold** and *italic*
 Here is some **bold text**, some *italic text*, and some ~~strikethrough~~.
 
-## Heading 2
+## Heading 2: Nested Inline Styles
+**Bold with *italic* inside**, ***bold and italic***, and ~~strike with **bold**~~.
+
+### Heading 3: Links with Styles [link](https://example.com)
+Here is a [**bold link**](https://example.com) and [*italic link*](https://example.com).
+
 Inline code: `print("Hello, World!")`
-```
+```dart
 // Block code:
 void main() {
   print("Hello, World!");
 }
 ```
 
-> This is a blockquote.
+> This is a blockquote with **bold** and *italic* text.
+> It can span multiple lines.
 
-- Unordered list item 1
-- Unordered list item 2
+- Unordered list with **bold item**
+- *Italic item* with ~~strikethrough~~
+- Regular item with [link](https://example.com)
 
-1. Ordered list item 1
-2. Ordered list item 2
+1. Ordered list with ***bold italic***
+2. Item with `inline code`
+3. Item with nested **bold and *italic* mixed**
 
-- [x] Checked item
-- [ ] Unchecked item
+- [x] Checked item with **bold**
+- [ ] Unchecked item with *italic*
 
 Plain text paragraph to demonstrate styling.
 
-Here is a [link](https://example.com).
+**Nesting examples:**
+- **Bold only**
+- *Italic only*
+- ***Bold and italic***
+- **Bold with *nested italic* inside**
+- *Italic with **nested bold** inside*
+- ~~Strikethrough with **bold** and *italic*~~
 
 
 ''';
@@ -164,71 +178,28 @@ class MarkdownTextEditingController extends TextEditingController {
     md.AstNode node,
   ) {
     switch (node) {
-      // Headings
-      case md.H1Node() ||
-          md.H2Node() ||
-          md.H3Node() ||
-          md.H4Node() ||
-          md.H5Node() ||
-          md.H6Node():
-        final level = (node as md.HeadingNode).level;
+      // Headings: show all rawText, just style
+      case md.HeadingNode():
+        final heading = node;
+        final level = heading.level;
         final style = _headingStyle(base, level);
-        // Use rawText to keep the user's exact characters visible while styling.
         return [TextSpan(text: node.rawText, style: style)];
 
-      // Paragraphs
-      case md.ParagraphNode(:final children):
-        final paragraphSpans = <InlineSpan>[];
-        for (final child in children) {
-          paragraphSpans.addAll(_visitNode(context, base, child));
-        }
-        return paragraphSpans.isEmpty
-            ? [TextSpan(text: node.rawText, style: base)]
-            : paragraphSpans;
+      // Paragraphs: show all rawText
+      case md.ParagraphNode():
+        return [TextSpan(text: node.rawText, style: base)];
 
-      // Unordered list
-      case md.UnorderedListNode(:final items):
-        final listSpans = <InlineSpan>[];
-        for (var i = 0; i < items.length; i++) {
-          final item = items[i];
-          final bullet = '• ';
-          listSpans.add(TextSpan(text: bullet, style: base));
-          listSpans.addAll(_visitNode(context, base, item));
-          if (i < items.length - 1) {
-            listSpans.add(TextSpan(text: '\n', style: base));
-          }
-        }
-        return listSpans;
+      // Unordered list: show all rawText
+      case md.UnorderedListNode():
+        return [TextSpan(text: node.rawText, style: base)];
 
-      // Ordered list
-      case md.OrderedListNode(:final items):
-        final listSpans = <InlineSpan>[];
-        for (var i = 0; i < items.length; i++) {
-          final item = items[i];
-          final marker = '${i + 1}. ';
-          listSpans.add(TextSpan(text: marker, style: base));
-          listSpans.addAll(_visitNode(context, base, item));
-          if (i < items.length - 1) {
-            listSpans.add(TextSpan(text: '\n', style: base));
-          }
-        }
-        return listSpans;
+      // Ordered list: show all rawText
+      case md.OrderedListNode():
+        return [TextSpan(text: node.rawText, style: base)];
 
-      // List item
-      case md.ListItemNode(:final children, :final isChecked):
-        final spans = <InlineSpan>[];
-        if (isChecked != null) {
-          spans.add(TextSpan(text: isChecked ? '☑ ' : '☐ ', style: base));
-        }
-        if (children.isEmpty) {
-          // Fallback to rawText if no parsed inline children.
-          spans.add(TextSpan(text: node.rawText, style: base));
-        } else {
-          for (final child in children) {
-            spans.addAll(_visitNode(context, base, child));
-          }
-        }
-        return spans;
+      // List item: show all rawText
+      case md.ListItemNode():
+        return [TextSpan(text: node.rawText, style: base)];
 
       // Code block
       case md.CodeBlockNode(:final text):
@@ -237,39 +208,32 @@ class MarkdownTextEditingController extends TextEditingController {
       case md.BlankLineNode():
         return [TextSpan(text: '\n', style: base)];
 
-      // Blockquote
-      case md.BlockquoteNode(:final children):
+      // Blockquote: show all rawText
+      case md.BlockquoteNode():
         final qStyle = _blockquoteStyle(context, base);
-        // Simple prefix for blockquote lines; maintain readability in TextField.
-        final quoteChildren = <InlineSpan>[];
-        for (final child in children) {
-          quoteChildren.addAll(_visitNode(context, qStyle, child));
-          quoteChildren.add(TextSpan(text: '\n', style: qStyle));
-        }
-        if (quoteChildren.isNotEmpty) quoteChildren.removeLast();
-        // Prefix with a vertical bar to suggest quote.
-        return [TextSpan(text: '│ ', style: qStyle), ...quoteChildren];
+        return [TextSpan(text: node.rawText, style: qStyle)];
 
-      // Inline styles
+      // Inline styles: show all rawText, just style
       case md.BoldNode():
-        return [TextSpan(text: node.rawText, style: _bold(base))];
+        final boldStyle = _bold(base);
+        return [TextSpan(text: node.rawText, style: boldStyle)];
       case md.ItalicNode():
-        return [TextSpan(text: node.rawText, style: _italic(base))];
+        final italicStyle = _italic(base);
+        return [TextSpan(text: node.rawText, style: italicStyle)];
       case md.StrikethroughNode():
-        return [TextSpan(text: node.rawText, style: _strike(base))];
+        final strikeStyle = _strike(base);
+        return [TextSpan(text: node.rawText, style: strikeStyle)];
       case md.InlineCodeNode():
         return [
           TextSpan(text: node.rawText, style: _inlineCode(context, base)),
         ];
       case md.LinkNode():
-        // Style link text; keep raw to preserve markdown syntax in-place.
-        return [TextSpan(text: node.rawText, style: _linkStyle(context, base))];
+        final linkStyle = _linkStyle(context, base);
+        return [TextSpan(text: node.rawText, style: linkStyle)];
 
       // Plain text
       case md.TextNode():
         return [TextSpan(text: node.rawText, style: base)];
-
-      // No fallback necessary; all node variants are covered.
     }
   }
 
