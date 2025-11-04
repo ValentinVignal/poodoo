@@ -243,9 +243,9 @@ class MarkdownTextEditingController extends TextEditingController {
       case md.ListItemNode(:final children):
         return _buildNestedSpans(context, base, node.rawText, children);
 
-      // Code block
-      case md.CodeBlockNode(:final text):
-        return [TextSpan(text: text, style: _codeBlock(context, base))];
+      // Code block: show rawText including ```
+      case md.CodeBlockNode():
+        return [TextSpan(text: node.rawText, style: _codeBlock(context, base))];
       // Blank line
       case md.BlankLineNode():
         return [TextSpan(text: '\n', style: base)];
