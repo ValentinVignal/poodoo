@@ -107,6 +107,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.1.1"
+  markdown_lite:
+    dependency: "direct main"
+    description:
+      path: "../flutter_packages/packages/markdown_lite"
+      relative: true
+    source: path
+    version: "0.0.0"
   matcher:
     dependency: transitive
     description:
