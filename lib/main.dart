@@ -84,25 +84,22 @@ Plain text paragraph to demonstrate styling.
 class MarkdownTextEditingController extends TextEditingController {
   MarkdownTextEditingController({String? text})
     : super(text: text ?? _exampleMarkdown);
+
   TextStyle _baseStyle(BuildContext context, TextStyle? style) {
     // Fallback to DefaultTextStyle if incoming style is null.
     return style ?? DefaultTextStyle.of(context).style;
   }
 
-  TextStyle _headingStyle(TextStyle base, int level) {
-    final baseSize = base.fontSize ?? 14.0;
-    // Simple scaling for headings within a TextField context.
-    return base.copyWith(
-      fontWeight: FontWeight.w700,
-      fontSize: switch (level) {
-        1 => baseSize * 1.6,
-        2 => baseSize * 1.45,
-        3 => baseSize * 1.3,
-        4 => baseSize * 1.2,
-        5 => baseSize * 1.1,
-        _ => baseSize * 1.05,
-      },
-    );
+  TextStyle? _headingStyle(BuildContext context, int level) {
+    return switch (level) {
+      1 => Theme.of(context).textTheme.headlineLarge,
+      2 => Theme.of(context).textTheme.headlineMedium,
+      3 => Theme.of(context).textTheme.headlineSmall,
+      4 => Theme.of(context).textTheme.titleLarge,
+      5 => Theme.of(context).textTheme.titleMedium,
+      6 => Theme.of(context).textTheme.titleSmall,
+      _ => null,
+    };
   }
 
   TextStyle _bold(TextStyle base) =>
@@ -182,7 +179,7 @@ class MarkdownTextEditingController extends TextEditingController {
       case md.HeadingNode():
         final heading = node;
         final level = heading.level;
-        final style = _headingStyle(base, level);
+        final style = _headingStyle(context, level);
         return [TextSpan(text: node.rawText, style: style)];
 
       // Paragraphs: show all rawText
