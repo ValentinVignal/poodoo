@@ -157,6 +157,61 @@ class MarkdownTextEditingController extends TextEditingController {
     );
   }
 
+  // Syntax character styles (Discord-like)
+  TextStyle _syntaxStyle(BuildContext context) {
+    final theme = Theme.of(context);
+    return TextStyle(
+      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+      fontSize: 14,
+    );
+  }
+
+  TextStyle _headingSyntaxStyle(BuildContext context) {
+    final theme = Theme.of(context);
+    return TextStyle(
+      color: theme.colorScheme.primary.withValues(alpha: 0.6),
+      fontWeight: FontWeight.bold,
+    );
+  }
+
+  TextStyle _linkSyntaxStyle(BuildContext context) {
+    final theme = Theme.of(context);
+    return TextStyle(color: theme.colorScheme.primary.withValues(alpha: 0.5));
+  }
+
+  TextStyle _linkUrlStyle(BuildContext context) {
+    final theme = Theme.of(context);
+    return TextStyle(color: theme.colorScheme.primary.withValues(alpha: 0.7));
+  }
+
+  TextStyle _codeBlockLanguageStyle(BuildContext context) {
+    final theme = Theme.of(context);
+    return GoogleFonts.inconsolata(
+      color: theme.colorScheme.tertiary,
+      fontSize: 12,
+    );
+  }
+
+  TextStyle _listMarkerStyle(BuildContext context) {
+    final theme = Theme.of(context);
+    return TextStyle(
+      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+      fontWeight: FontWeight.bold,
+    );
+  }
+
+  TextStyle _checkboxStyle(BuildContext context) {
+    final theme = Theme.of(context);
+    return TextStyle(color: theme.colorScheme.secondary);
+  }
+
+  TextStyle _blockquoteSyntaxStyle(BuildContext context) {
+    final theme = Theme.of(context);
+    return TextStyle(
+      color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+    );
+  }
+
   // Build TextSpans for a full markdown document.
   List<InlineSpan> _buildDocumentSpans(
     BuildContext context,
@@ -175,87 +230,114 @@ class MarkdownTextEditingController extends TextEditingController {
     return spans;
   }
 
-  // Build spans with nested styling by finding child positions in parent's rawText
-  List<InlineSpan> _buildNestedSpans(
-    BuildContext context,
-    TextStyle base,
-    String rawText,
-    List<md.AstNode> children,
-  ) {
-    if (children.isEmpty) {
-      return [TextSpan(text: rawText, style: base)];
-    }
-
-    final spans = <InlineSpan>[];
-    var lastEnd = 0;
-
-    for (final child in children) {
-      // Find where this child's rawText appears in the parent's rawText
-      final childStart = rawText.indexOf(child.rawText, lastEnd);
-      if (childStart == -1) {
-        // Child's rawText not found in parent - skip
-        continue;
-      }
-
-      // Add any text before this child
-      if (childStart > lastEnd) {
-        spans.add(
-          TextSpan(text: rawText.substring(lastEnd, childStart), style: base),
-        );
-      }
-
-      // Add the child with its styling, inheriting the parent's base style
-      spans.addAll(_visitNodeWithStyle(context, base, child));
-
-      lastEnd = childStart + child.rawText.length;
-    }
-
-    // Add any remaining text after the last child
-    if (lastEnd < rawText.length) {
-      spans.add(TextSpan(text: rawText.substring(lastEnd), style: base));
-    }
-
-    return spans;
-  }
-
   // Helper that visits a node and applies additional styling on top of base
+  // This version shows syntax characters with different styling (Discord-style)
   List<InlineSpan> _visitNodeWithStyle(
     BuildContext context,
     TextStyle base,
     md.AstNode node,
   ) {
     switch (node) {
-      // Inline styles: apply style on top of base and process children
-      case md.BoldNode(:final children):
+      // Bold: show ** or __ with syntax style
+      case md.BoldNode(:final children, :final delimiter):
+        final spans = <InlineSpan>[];
         final boldStyle = _bold(base);
+        final syntaxStyle = _syntaxStyle(context);
+
+        // Opening delimiter
+        spans.add(TextSpan(text: delimiter, style: syntaxStyle));
+
+        // Content
         if (children.isEmpty) {
-          return [TextSpan(text: node.rawText, style: boldStyle)];
+          spans.add(TextSpan(text: node.text, style: boldStyle));
+        } else {
+          for (final child in children) {
+            spans.addAll(_visitNodeWithStyle(context, boldStyle, child));
+          }
         }
-        return _buildNestedSpans(context, boldStyle, node.rawText, children);
-      case md.ItalicNode(:final children):
+
+        // Closing delimiter
+        spans.add(TextSpan(text: delimiter, style: syntaxStyle));
+        return spans;
+
+      // Italic: show * or _ with syntax style
+      case md.ItalicNode(:final children, :final delimiter):
+        final spans = <InlineSpan>[];
         final italicStyle = _italic(base);
+        final syntaxStyle = _syntaxStyle(context);
+
+        spans.add(TextSpan(text: delimiter, style: syntaxStyle));
         if (children.isEmpty) {
-          return [TextSpan(text: node.rawText, style: italicStyle)];
+          spans.add(TextSpan(text: node.text, style: italicStyle));
+        } else {
+          for (final child in children) {
+            spans.addAll(_visitNodeWithStyle(context, italicStyle, child));
+          }
         }
-        return _buildNestedSpans(context, italicStyle, node.rawText, children);
-      case md.StrikethroughNode(:final children):
+        spans.add(TextSpan(text: delimiter, style: syntaxStyle));
+        return spans;
+
+      // Strikethrough: show ~~ with syntax style
+      case md.StrikethroughNode(:final children, :final delimiter):
+        final spans = <InlineSpan>[];
         final strikeStyle = _strike(base);
+        final syntaxStyle = _syntaxStyle(context);
+
+        spans.add(TextSpan(text: delimiter, style: syntaxStyle));
         if (children.isEmpty) {
-          return [TextSpan(text: node.rawText, style: strikeStyle)];
+          spans.add(TextSpan(text: node.text, style: strikeStyle));
+        } else {
+          for (final child in children) {
+            spans.addAll(_visitNodeWithStyle(context, strikeStyle, child));
+          }
         }
-        return _buildNestedSpans(context, strikeStyle, node.rawText, children);
-      case md.InlineCodeNode():
-        return [
-          TextSpan(text: node.rawText, style: _inlineCode(context, base)),
-        ];
-      case md.LinkNode(:final children):
-        final linkStyle = _linkStyle(context, base);
+        spans.add(TextSpan(text: delimiter, style: syntaxStyle));
+        return spans;
+
+      // Inline code: show ` with syntax style
+      case md.InlineCodeNode(:final delimiter):
+        final spans = <InlineSpan>[];
+        final syntaxStyle = _syntaxStyle(context);
+        final codeStyle = _inlineCode(context, base);
+
+        spans.add(TextSpan(text: delimiter, style: syntaxStyle));
+        spans.add(TextSpan(text: node.text, style: codeStyle));
+        spans.add(TextSpan(text: delimiter, style: syntaxStyle));
+        return spans;
+
+      // Link: show [] and () with different styles
+      case md.LinkNode(:final children, :final url):
+        final spans = <InlineSpan>[];
+        final linkTextStyle = _linkStyle(context, base);
+        final linkSyntaxStyle = _linkSyntaxStyle(context);
+        final urlStyle = _linkUrlStyle(context);
+
+        // [
+        spans.add(TextSpan(text: '[', style: linkSyntaxStyle));
+
+        // link text
         if (children.isEmpty) {
-          return [TextSpan(text: node.rawText, style: linkStyle)];
+          spans.add(TextSpan(text: node.text, style: linkTextStyle));
+        } else {
+          for (final child in children) {
+            spans.addAll(_visitNodeWithStyle(context, linkTextStyle, child));
+          }
         }
-        return _buildNestedSpans(context, linkStyle, node.rawText, children);
+
+        // ](
+        spans.add(TextSpan(text: ']', style: linkSyntaxStyle));
+        spans.add(TextSpan(text: '(', style: linkSyntaxStyle));
+
+        // URL
+        spans.add(TextSpan(text: url, style: urlStyle));
+
+        // )
+        spans.add(TextSpan(text: ')', style: linkSyntaxStyle));
+        return spans;
+
       case md.TextNode():
-        return [TextSpan(text: node.rawText, style: base)];
+        return [TextSpan(text: node.text, style: base)];
+
       default:
         // For any other node type, use regular visitNode
         return _visitNode(context, base, node);
@@ -263,6 +345,7 @@ class MarkdownTextEditingController extends TextEditingController {
   }
 
   // Build spans for list items with proper indentation for nesting
+  // Shows syntax characters with different styling
   List<InlineSpan> _buildListSpans(
     BuildContext context,
     TextStyle base,
@@ -270,28 +353,28 @@ class MarkdownTextEditingController extends TextEditingController {
     bool isOrdered,
   ) {
     final spans = <InlineSpan>[];
-    var itemNumber = 1;
+    final markerStyle = _listMarkerStyle(context);
+    final checkboxStyle = _checkboxStyle(context);
 
     for (final item in items) {
       // Add indentation based on indent level
-      final indent = '  ' * item.indentLevel;
+      if (item.indentLevel > 0) {
+        spans.add(TextSpan(text: '  ' * item.indentLevel, style: base));
+      }
 
-      // Add list marker
-      final marker = isOrdered ? '$itemNumber. ' : '- ';
+      // Add list marker with style
+      spans.add(TextSpan(text: '${item.marker} ', style: markerStyle));
 
       // Add checkbox if present
-      final checkbox = item.isChecked != null
-          ? item.isChecked!
-                ? '[x] '
-                : '[ ] '
-          : '';
-
-      // Combine prefix
-      final prefix = '$indent$marker$checkbox';
-      spans.add(TextSpan(text: prefix, style: base));
+      if (item.isChecked != null) {
+        final checkboxText = item.isChecked! ? '[x] ' : '[ ] ';
+        spans.add(TextSpan(text: checkboxText, style: checkboxStyle));
+      }
 
       // Add the item content with inline styling
-      spans.addAll(_buildNestedSpans(context, base, item.text, item.children));
+      for (final child in item.children) {
+        spans.addAll(_visitNodeWithStyle(context, base, child));
+      }
 
       // Add nested list if present
       if (item.nestedList != null) {
@@ -307,10 +390,6 @@ class MarkdownTextEditingController extends TextEditingController {
       if (item != items.last || item.nestedList != null) {
         spans.add(TextSpan(text: '\n', style: base));
       }
-
-      if (isOrdered) {
-        itemNumber++;
-      }
     }
 
     return spans;
@@ -323,21 +402,31 @@ class MarkdownTextEditingController extends TextEditingController {
     md.AstNode node,
   ) {
     switch (node) {
-      // Headings: show rawText with heading style and nested children
+      // Headings: show # with syntax style
       case md.HeadingNode():
         final heading = node;
         final level = heading.level;
-        final style = _headingStyle(context, level) ?? base;
-        return _buildNestedSpans(
-          context,
-          style,
-          node.rawText,
-          heading.children,
-        );
+        final headingTextStyle = _headingStyle(context, level) ?? base;
+        final syntaxStyle = _headingSyntaxStyle(context);
 
-      // Paragraphs: show rawText with nested children
+        final spans = <InlineSpan>[];
+        // Show the # prefix
+        spans.add(TextSpan(text: '${heading.prefix} ', style: syntaxStyle));
+
+        // Show the heading content
+        for (final child in heading.children) {
+          spans.addAll(_visitNodeWithStyle(context, headingTextStyle, child));
+        }
+
+        return spans;
+
+      // Paragraphs: show content with nested children
       case md.ParagraphNode(:final children):
-        return _buildNestedSpans(context, base, node.rawText, children);
+        final spans = <InlineSpan>[];
+        for (final child in children) {
+          spans.addAll(_visitNodeWithStyle(context, base, child));
+        }
+        return spans;
 
       // Unordered list: render each item with proper indentation
       case md.UnorderedListNode(:final items):
@@ -347,44 +436,75 @@ class MarkdownTextEditingController extends TextEditingController {
       case md.OrderedListNode(:final items):
         return _buildListSpans(context, base, items, true);
 
-      // List item: process inline children since they match rawText
+      // List item: process inline children
       case md.ListItemNode(:final children):
-        return _buildNestedSpans(context, base, node.rawText, children);
+        final spans = <InlineSpan>[];
+        for (final child in children) {
+          spans.addAll(_visitNodeWithStyle(context, base, child));
+        }
+        return spans;
 
-      // Code block: show rawText including ```
-      case md.CodeBlockNode():
-        return [TextSpan(text: node.rawText, style: _codeBlock(context, base))];
+      // Code block: show ``` with syntax style and language
+      case md.CodeBlockNode(:final language):
+        final spans = <InlineSpan>[];
+        final syntaxStyle = _syntaxStyle(context);
+        final codeStyle = _codeBlock(context, base);
+        final langStyle = _codeBlockLanguageStyle(context);
+
+        // Opening ```
+        spans.add(TextSpan(text: '```', style: syntaxStyle));
+        if (language != null && language.isNotEmpty) {
+          spans.add(TextSpan(text: language, style: langStyle));
+        }
+        spans.add(TextSpan(text: '\n', style: base));
+
+        // Code content
+        spans.add(TextSpan(text: node.text, style: codeStyle));
+
+        // Closing ```
+        spans.add(TextSpan(text: '\n```', style: syntaxStyle));
+        return spans;
+
       // Blank line
       case md.BlankLineNode():
         return [TextSpan(text: '\n', style: base)];
 
-      // Blockquote: show full rawText with blockquote style
-      // Note: Children have different rawText (without > prefix) so we can't nest easily
+      // Blockquote: show > with syntax style
       case md.BlockquoteNode():
+        final spans = <InlineSpan>[];
         final qStyle = _blockquoteStyle(context, base);
-        return [TextSpan(text: node.rawText, style: qStyle)];
+        final syntaxStyle = _blockquoteSyntaxStyle(context);
 
-      // Inline styles: show rawText with style and nested children
-      case md.BoldNode(:final children):
-        final boldStyle = _bold(base);
-        return _buildNestedSpans(context, boldStyle, node.rawText, children);
-      case md.ItalicNode(:final children):
-        final italicStyle = _italic(base);
-        return _buildNestedSpans(context, italicStyle, node.rawText, children);
-      case md.StrikethroughNode(:final children):
-        final strikeStyle = _strike(base);
-        return _buildNestedSpans(context, strikeStyle, node.rawText, children);
+        // For each line in the blockquote, we need to prepend >
+        // Since we have the children, we'll render them with the blockquote style
+        // and add > at the beginning
+        final lines = node.rawText.split('\n');
+        for (var i = 0; i < lines.length; i++) {
+          if (i > 0) {
+            spans.add(TextSpan(text: '\n', style: base));
+          }
+          spans.add(TextSpan(text: '> ', style: syntaxStyle));
+
+          // Get the content without the >
+          final line = lines[i].trimLeft();
+          final content = line.startsWith('>')
+              ? line.substring(1).trimLeft()
+              : line;
+          spans.add(TextSpan(text: content, style: qStyle));
+        }
+        return spans;
+
+      // Inline styles: delegate to _visitNodeWithStyle
+      case md.BoldNode():
+      case md.ItalicNode():
+      case md.StrikethroughNode():
       case md.InlineCodeNode():
-        return [
-          TextSpan(text: node.rawText, style: _inlineCode(context, base)),
-        ];
-      case md.LinkNode(:final children):
-        final linkStyle = _linkStyle(context, base);
-        return _buildNestedSpans(context, linkStyle, node.rawText, children);
+      case md.LinkNode():
+        return _visitNodeWithStyle(context, base, node);
 
       // Plain text
       case md.TextNode():
-        return [TextSpan(text: node.rawText, style: base)];
+        return [TextSpan(text: node.text, style: base)];
     }
   }
 
