@@ -1,16 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:markdown_lite/markdown_lite.dart' as md;
 
+import 'theme/theme.dart';
+
 void main() {
-  runApp(const MyApp());
+  runApp(const Poodoo());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class Poodoo extends StatelessWidget {
+  const Poodoo({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(home: Scaffold(body: MarkdownTextField()));
+    return MaterialApp(
+      theme: buildTheme(Brightness.light),
+      darkTheme: buildTheme(Brightness.dark),
+      home: Scaffold(
+        body: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: MarkdownTextField(),
+        ),
+      ),
+    );
   }
 }
 
@@ -103,7 +115,7 @@ class MarkdownTextEditingController extends TextEditingController {
   }
 
   TextStyle _bold(TextStyle base) =>
-      base.merge(const TextStyle(fontWeight: FontWeight.w700));
+      base.merge(const TextStyle(fontWeight: FontWeight.bold));
   TextStyle _italic(TextStyle base) =>
       base.merge(const TextStyle(fontStyle: FontStyle.italic));
   TextStyle _strike(TextStyle base) =>
@@ -111,23 +123,16 @@ class MarkdownTextEditingController extends TextEditingController {
   TextStyle _inlineCode(BuildContext context, TextStyle base) {
     final theme = Theme.of(context);
     return base.merge(
-      TextStyle(
-        fontFamily: 'monospace',
-        backgroundColor: theme.colorScheme.surfaceContainerHighest.withOpacity(
-          0.6,
+      GoogleFonts.inconsolata(
+        backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.6,
         ),
       ),
     );
   }
 
   TextStyle _codeBlock(BuildContext context, TextStyle base) {
-    final theme = Theme.of(context);
-    return base.merge(
-      TextStyle(
-        fontFamily: 'monospace',
-        backgroundColor: theme.colorScheme.surfaceContainerHighest,
-      ),
-    );
+    return _inlineCode(context, base);
   }
 
   TextStyle _linkStyle(BuildContext context, TextStyle base) {
@@ -144,8 +149,10 @@ class MarkdownTextEditingController extends TextEditingController {
     final theme = Theme.of(context);
     return base.merge(
       TextStyle(
-        color: theme.colorScheme.onSurface.withOpacity(0.75),
-        fontStyle: FontStyle.italic,
+        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+        backgroundColor: theme.colorScheme.surfaceContainer.withValues(
+          alpha: 0.6,
+        ),
       ),
     );
   }
