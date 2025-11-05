@@ -58,6 +58,8 @@ Simple paragraph with **bold** and *italic* text.
 ### Heading 3: Links with Styles [link](https://example.com)
 Here is a [**bold link**](https://example.com) and [*italic link*](https://example.com) [`code link`](https://example.com).
 
+Simple link https://example.com and github.com.
+
 Inline code: `print("Hello, World!")`
 ```dart
 // Block code:
@@ -305,34 +307,49 @@ class MarkdownTextEditingController extends TextEditingController {
         spans.add(TextSpan(text: delimiter, style: syntaxStyle));
         return spans;
 
-      // Link: show [] and () with different styles
-      case md.LinkNode(:final children, :final url):
+      // Link: show [] and () with different styles for markdown links
+      // For auto-links, just show the URL with link styling
+      case md.LinkNode(:final children, :final url, :final isAutoLink):
         final spans = <InlineSpan>[];
         final linkTextStyle = _linkStyle(context, base);
-        final linkSyntaxStyle = _linkSyntaxStyle(context);
-        final urlStyle = _linkUrlStyle(context);
 
-        // [
-        spans.add(TextSpan(text: '[', style: linkSyntaxStyle));
-
-        // link text
-        if (children.isEmpty) {
-          spans.add(TextSpan(text: node.text, style: linkTextStyle));
-        } else {
-          for (final child in children) {
-            spans.addAll(_visitNodeWithStyle(context, linkTextStyle, child));
+        if (isAutoLink) {
+          // Auto-link: just show the text as-is with link styling
+          if (children.isEmpty) {
+            spans.add(TextSpan(text: node.text, style: linkTextStyle));
+          } else {
+            for (final child in children) {
+              spans.addAll(_visitNodeWithStyle(context, linkTextStyle, child));
+            }
           }
+        } else {
+          // Markdown link: show [text](url) with syntax characters
+          final linkSyntaxStyle = _linkSyntaxStyle(context);
+          final urlStyle = _linkUrlStyle(context);
+
+          // [
+          spans.add(TextSpan(text: '[', style: linkSyntaxStyle));
+
+          // link text
+          if (children.isEmpty) {
+            spans.add(TextSpan(text: node.text, style: linkTextStyle));
+          } else {
+            for (final child in children) {
+              spans.addAll(_visitNodeWithStyle(context, linkTextStyle, child));
+            }
+          }
+
+          // ](
+          spans.add(TextSpan(text: ']', style: linkSyntaxStyle));
+          spans.add(TextSpan(text: '(', style: linkSyntaxStyle));
+
+          // URL
+          spans.add(TextSpan(text: url, style: urlStyle));
+
+          // )
+          spans.add(TextSpan(text: ')', style: linkSyntaxStyle));
         }
 
-        // ](
-        spans.add(TextSpan(text: ']', style: linkSyntaxStyle));
-        spans.add(TextSpan(text: '(', style: linkSyntaxStyle));
-
-        // URL
-        spans.add(TextSpan(text: url, style: urlStyle));
-
-        // )
-        spans.add(TextSpan(text: ')', style: linkSyntaxStyle));
         return spans;
 
       case md.TextNode():
@@ -470,28 +487,54 @@ class MarkdownTextEditingController extends TextEditingController {
         return [TextSpan(text: '\n', style: base)];
 
       // Blockquote: show > with syntax style
-      case md.BlockquoteNode():
+      case md.BlockquoteNode(:final children):
         final spans = <InlineSpan>[];
         final qStyle = _blockquoteStyle(context, base);
         final syntaxStyle = _blockquoteSyntaxStyle(context);
 
-        // For each line in the blockquote, we need to prepend >
-        // Since we have the children, we'll render them with the blockquote style
-        // and add > at the beginning
-        final lines = node.rawText.split('\n');
-        for (var i = 0; i < lines.length; i++) {
-          if (i > 0) {
-            spans.add(TextSpan(text: '\n', style: base));
-          }
-          spans.add(TextSpan(text: '> ', style: syntaxStyle));
+        // The blockquote children contain the parsed content
+        // We need to add > before the content and before each line break
 
-          // Get the content without the >
-          final line = lines[i].trimLeft();
-          final content = line.startsWith('>')
-              ? line.substring(1).trimLeft()
-              : line;
-          spans.add(TextSpan(text: content, style: qStyle));
+        // Get all child spans first
+        final childSpans = <InlineSpan>[];
+        for (final child in children) {
+          childSpans.addAll(_visitNodeWithStyle(context, qStyle, child));
         }
+
+        // Now inject > at the beginning and after each newline
+        var needsPrefix = true;
+        for (final span in childSpans) {
+          if (span is TextSpan && span.text != null) {
+            final text = span.text!;
+            if (text.isEmpty) continue;
+
+            // Split by newlines and add > before each line
+            final lines = text.split('\n');
+            for (var i = 0; i < lines.length; i++) {
+              if (needsPrefix) {
+                spans.add(TextSpan(text: '> ', style: syntaxStyle));
+                needsPrefix = false;
+              }
+
+              if (lines[i].isNotEmpty) {
+                spans.add(TextSpan(text: lines[i], style: span.style));
+              }
+
+              // Add newline if not last line
+              if (i < lines.length - 1) {
+                spans.add(TextSpan(text: '\n', style: qStyle));
+                needsPrefix = true;
+              }
+            }
+          } else {
+            if (needsPrefix) {
+              spans.add(TextSpan(text: '> ', style: syntaxStyle));
+              needsPrefix = false;
+            }
+            spans.add(span);
+          }
+        }
+
         return spans;
 
       // Inline styles: delegate to _visitNodeWithStyle
