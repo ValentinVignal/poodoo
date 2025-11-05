@@ -262,6 +262,60 @@ class MarkdownTextEditingController extends TextEditingController {
     }
   }
 
+  // Build spans for list items with proper indentation for nesting
+  List<InlineSpan> _buildListSpans(
+    BuildContext context,
+    TextStyle base,
+    List<md.ListItemNode> items,
+    bool isOrdered,
+  ) {
+    final spans = <InlineSpan>[];
+    var itemNumber = 1;
+
+    for (final item in items) {
+      // Add indentation based on indent level
+      final indent = '  ' * item.indentLevel;
+
+      // Add list marker
+      final marker = isOrdered ? '$itemNumber. ' : '- ';
+
+      // Add checkbox if present
+      final checkbox = item.isChecked != null
+          ? item.isChecked!
+                ? '[x] '
+                : '[ ] '
+          : '';
+
+      // Combine prefix
+      final prefix = '$indent$marker$checkbox';
+      spans.add(TextSpan(text: prefix, style: base));
+
+      // Add the item content with inline styling
+      spans.addAll(_buildNestedSpans(context, base, item.text, item.children));
+
+      // Add nested list if present
+      if (item.nestedList != null) {
+        spans.add(TextSpan(text: '\n', style: base));
+        final nestedItems = item.nestedList!.items;
+        final nestedIsOrdered = item.nestedList is md.OrderedListNode;
+        spans.addAll(
+          _buildListSpans(context, base, nestedItems, nestedIsOrdered),
+        );
+      }
+
+      // Add newline after each item (except possibly the last)
+      if (item != items.last || item.nestedList != null) {
+        spans.add(TextSpan(text: '\n', style: base));
+      }
+
+      if (isOrdered) {
+        itemNumber++;
+      }
+    }
+
+    return spans;
+  }
+
   // Visitor that returns a list of spans for the given node.
   List<InlineSpan> _visitNode(
     BuildContext context,
@@ -285,14 +339,13 @@ class MarkdownTextEditingController extends TextEditingController {
       case md.ParagraphNode(:final children):
         return _buildNestedSpans(context, base, node.rawText, children);
 
-      // Unordered list: show full rawText
-      // Note: List items have different rawText so we can't easily nest
-      case md.UnorderedListNode():
-        return [TextSpan(text: node.rawText, style: base)];
+      // Unordered list: render each item with proper indentation
+      case md.UnorderedListNode(:final items):
+        return _buildListSpans(context, base, items, false);
 
-      // Ordered list: show full rawText
-      case md.OrderedListNode():
-        return [TextSpan(text: node.rawText, style: base)];
+      // Ordered list: render each item with proper indentation
+      case md.OrderedListNode(:final items):
+        return _buildListSpans(context, base, items, true);
 
       // List item: process inline children since they match rawText
       case md.ListItemNode(:final children):
