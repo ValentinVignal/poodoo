@@ -92,7 +92,7 @@ packages:
     source: sdk
     version: "0.0.0"
   google_fonts:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: google_fonts
       sha256: "517b20870220c48752eafa0ba1a797a092fb22df0d89535fd9991e86ee2cdd9c"
@@ -151,6 +151,13 @@ packages:
     dependency: "direct main"
     description:
       path: "../flutter_packages/packages/markdown_lite"
+      relative: true
+    source: path
+    version: "0.0.0"
+  markdown_lite_editor:
+    dependency: "direct main"
+    description:
+      path: "../flutter_packages/packages/markdown_lite_editor"
       relative: true
     source: path
     version: "0.0.0"

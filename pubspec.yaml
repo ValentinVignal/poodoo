@@ -36,7 +36,14 @@ dependencies:
   cupertino_icons: ^1.0.8
   markdown_lite:
     path: ../flutter_packages/packages/markdown_lite
-  google_fonts: ^6.3.2
+  markdown_lite_editor:
+    path: ../flutter_packages/packages/markdown_lite_editor
+  
+dependency_overrides: 
+  markdown_lite:
+    path: ../flutter_packages/packages/markdown_lite
+  markdown_lite_editor:
+    path: ../flutter_packages/packages/markdown_lite_editor
 
 dev_dependencies:
   flutter_test:
