@@ -16,7 +16,10 @@ class Poodoo extends StatelessWidget {
       theme: buildTheme(Brightness.light),
       darkTheme: buildTheme(Brightness.dark),
       home: Scaffold(
-        body: Padding(padding: const EdgeInsets.all(24.0), child: Editor()),
+        body: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(children: [Expanded(child: Editor())]),
+        ),
       ),
     );
   }
@@ -30,12 +33,31 @@ class Editor extends StatefulWidget {
 }
 
 class _EditorState extends State<Editor> {
-  final _controller = MarkdownTextEditingController(
-    text: '' ?? _exampleMarkdown,
-  );
+  final _controller = MarkdownTextEditingController(text: _exampleMarkdown);
   @override
   Widget build(BuildContext context) {
-    return MarkdownLiteEditor(controller: _controller);
+    return Column(
+      children: [
+        TextButton(
+          child: Text('Print content'),
+          onPressed: () {
+            print(_controller.text);
+          },
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            child: RichText(
+              text: _controller.buildTextSpan(
+                context: context,
+                style: Theme.of(context).textTheme.bodyMedium!,
+                withComposing: false,
+              ),
+            ),
+          ),
+        ),
+        Expanded(child: MarkdownLiteEditor(controller: _controller)),
+      ],
+    );
   }
 }
 
