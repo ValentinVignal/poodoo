@@ -73,6 +73,22 @@ Here is a [**bold link**](https://example.com) and [*italic link*](https://examp
 
 Simple link https://example.com and github.com.
 
+https://valentinvignal.github.io/portfolio/
+
+https://pub.dev/
+
+https://ticktick.com/webapp/#p/68ec6f368f085bf4def5f8eb/tasks/6927bfc5d95aea4fb8d13f98
+
+https://www.notion.so/TODO-12f210b82c3080cbb8d0f0b36288c16e
+
+https://web.whatsapp.com/
+
+https://web.telegram.org
+
+https://www.youtube.com/
+
+https://tasksboard.com/app
+
 Inline code: `print("Hello, World!")`
 ```dart
 // Block code:
