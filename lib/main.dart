@@ -13,6 +13,7 @@ class Poodoo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      // themeMode: ThemeMode.light,
       theme: buildTheme(Brightness.light),
       darkTheme: buildTheme(Brightness.dark),
       home: Scaffold(
@@ -36,14 +37,10 @@ class _EditorState extends State<Editor> {
   final _controller = MarkdownTextEditingController(text: _exampleMarkdown);
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Row(
       children: [
-        TextButton(
-          child: Text('Print content'),
-          onPressed: () {
-            print(_controller.text);
-          },
-        ),
+        Expanded(flex: 2, child: MarkdownLiteEditor(controller: _controller)),
+        VerticalDivider(),
         Expanded(
           child: SingleChildScrollView(
             child: RichText(
@@ -55,7 +52,6 @@ class _EditorState extends State<Editor> {
             ),
           ),
         ),
-        Expanded(child: MarkdownLiteEditor(controller: _controller)),
       ],
     );
   }
